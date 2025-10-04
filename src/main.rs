@@ -3,6 +3,7 @@ use std::{env, fs};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::os::unix::fs::PermissionsExt;
+use std::process;
 
 const BUILTINS: [&str; 3] = ["exit", "echo", "type"];
 
@@ -10,6 +11,10 @@ enum Command {
     Exit,
     Echo(String),
     Type(String),
+    Executable {
+	path_to_executable: PathBuf,
+	input: String
+    },
     NotFound(String),
 }
 
@@ -34,6 +39,13 @@ impl Command {
 		Self::Type(type_of.trim().to_string())
 	    } else {
 		Self::Type(String::from(""))}
+
+	// Executable    
+	} else if let Some(executable) = find_executable(input.split(" ").next().unwrap()) {
+	    Self::Executable {
+		path_to_executable: executable,
+		input: input.to_string()
+	    }
 	}
 
 	// Not a builtin
@@ -98,6 +110,14 @@ fn main() {
   		    } else {
   			println!("{}: not found", x);
   		    }
+	    },
+	    Command::Executable { path_to_executable, input } => {
+		let mut execution = process::Command::new(path_to_executable.as_path().file_stem().unwrap())
+		    .args(input.split(" ").skip(1))
+		    .spawn()
+		    .expect("{path_to_executable} binary failed");
+		execution.wait().unwrap();
+		
 	    },
 	    Command::NotFound(x) => println!("{}: command not found", x),
 	}
