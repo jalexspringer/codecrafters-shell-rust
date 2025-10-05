@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 use std::{ env, process };
 
 use crate::BUILTINS;
@@ -7,6 +7,7 @@ use crate::utils::find_executable;
 pub(crate) enum Command {
     Exit,
     Pwd,
+    Cd(PathBuf),
     Echo(String),
     Type(String),
     Executable {
@@ -25,6 +26,20 @@ impl Command {
 
         // pwd
         else if input.starts_with("pwd") { Self::Pwd }
+
+	// cd
+	else if input.starts_with("cd") {
+	    if let Some(target_dir_string) = input.strip_prefix("cd ") {
+		let target_dir_path = Path::new(target_dir_string);
+		Self::Cd(target_dir_path.to_path_buf())
+	    } else if let Some(home) = env::home_dir() {
+     		    Self::Cd(home)
+     		} else {
+     		    let mut root = PathBuf::new();
+     		    root.push("/");
+     		    Self::Cd(root)
+     		}
+	}
 
         // Echo
         else if input.starts_with("echo") {
@@ -59,6 +74,10 @@ impl Command {
         match command {
             Self::Exit => (),
             Self::Pwd => println!("{}", env::current_dir().unwrap().display()),
+	    Self::Cd(x) => {
+		if env::set_current_dir(x.as_path()).is_ok() {}
+		else {println!("cd: {}: No such file or directory", x.display())}
+	    },
             Self::Echo(x) => println!("{}", x),
             Self::Type(x) => {
                 // Builtin takes priority
