@@ -1,0 +1,84 @@
+use std::path::PathBuf;
+use std::{ env, process };
+
+use crate::BUILTINS;
+use crate::utils::find_executable;
+
+pub(crate) enum Command {
+    Exit,
+    Pwd,
+    Echo(String),
+    Type(String),
+    Executable {
+        path_to_executable: PathBuf,
+        input: String
+    },
+    NotFound(String),
+}
+
+impl Command {
+    pub(crate) fn from_input(input: String) -> Self {
+        let input = input.trim();
+
+        // Exit clause
+        if input.starts_with("exit 0") { Self::Exit  }
+
+        // pwd
+        else if input.starts_with("pwd") { Self::Pwd }
+
+        // Echo
+        else if input.starts_with("echo") {
+            if let Some(to_echo) = input.strip_prefix("echo ") {
+                Self::Echo(to_echo.trim().to_string())
+            } else {
+                Self::Echo(String::from("What do you want me to echo?"))
+            }
+
+        // Type
+        } else if input.starts_with("type") {
+            if let Some(type_of) = input.strip_prefix("type ") {
+                Self::Type(type_of.trim().to_string())
+            } else {
+                Self::Type(String::from(""))}
+
+        // Executable    
+        } else if let Some(executable) = find_executable(input.split(" ").next().unwrap()) {
+            Self::Executable {
+                path_to_executable: executable,
+                input: input.to_string()
+            }
+        }
+
+        // Not a builtin
+        else {
+            Self::NotFound(input.to_string())
+        }
+    }
+
+    pub(crate) fn run_command(command: Self) {
+        match command {
+            Self::Exit => (),
+            Self::Pwd => println!("{}", env::current_dir().unwrap().display()),
+            Self::Echo(x) => println!("{}", x),
+            Self::Type(x) => {
+                // Builtin takes priority
+                if BUILTINS.contains(&x.as_str()) { println!("{} is a shell builtin", x) }
+
+                // Match the path
+                else if let Some(executable) = find_executable(&x) {
+                    println!("{x} is {}", executable.display());	
+                } else {
+                    println!("{}: not found", x);
+                }
+            },
+            Self::Executable { path_to_executable, input } => {
+                let mut execution = process::Command::new(path_to_executable.as_path().file_stem().unwrap())
+                    .args(input.split(" ").skip(1))
+                    .spawn()
+                    .expect("{path_to_executable} binary failed");
+                execution.wait().unwrap();
+            },
+            Self::NotFound(x) => println!("{}: command not found", x),
+        }
+    }
+}
