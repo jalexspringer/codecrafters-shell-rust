@@ -29,30 +29,8 @@ impl Command {
 
 	// cd
 	else if input.starts_with("cd") {
-	    if let Some(target_dir_string) = input.strip_prefix("cd ") {
-		if target_dir_string.starts_with(HOME_SYMBOL) {
-		    let mut target_dir_path = PathBuf::new();
-		    target_dir_path.push(env::home_dir().expect("User home directory is not set"));
-
-		    let home_strip_string = format!("{HOME_SYMBOL}/");
-		    if let Some(relative_path) = target_dir_string.strip_prefix(&home_strip_string) {
-			target_dir_path.push(relative_path);
-		    }
-		    
-		    Self::Cd(target_dir_path)
-		} else {
-		    let target_dir_path = Path::new(target_dir_string);
-		    Self::Cd(target_dir_path.to_path_buf())
-		}
-		
-
-	    } else if let Some(home) = env::home_dir() {
-     		    Self::Cd(home)
-     		} else {
-     		    let mut root = PathBuf::new();
-     		    root.push("/");
-     		    Self::Cd(root)
-     		}
+	    let target_path_buf = Self::process_target_dir(input.to_string());
+	    Self::Cd(target_path_buf)
 	}
 
         // Echo
@@ -114,4 +92,33 @@ impl Command {
             Self::NotFound(x) => println!("{}: command not found", x),
         }
     }
+    
+    fn process_target_dir(input: String) -> PathBuf {
+	if let Some(target_dir_string) = input.strip_prefix("cd ") {
+	    if target_dir_string.starts_with(HOME_SYMBOL) {
+		let mut target_dir_path = PathBuf::new();
+		target_dir_path.push(env::home_dir().expect("User home directory is not set"));
+
+		let home_strip_string = format!("{HOME_SYMBOL}/");
+		if let Some(relative_path) = target_dir_string.strip_prefix(&home_strip_string) {
+		    target_dir_path.push(relative_path);
+		}
+
+		target_dir_path
+	    } else {
+		let target_dir_path = Path::new(target_dir_string);
+		target_dir_path.to_path_buf()
+	    }
+
+
+	} else if let Some(home) = env::home_dir() {
+	    home
+	} else {
+	    let mut root = PathBuf::new();
+	    root.push("/");
+	    root
+	}
+    }
+
 }
+
