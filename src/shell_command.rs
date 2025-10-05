@@ -1,7 +1,7 @@
 use std::path::{Path,PathBuf};
 use std::{ env, process };
 
-use crate::BUILTINS;
+use crate::{BUILTINS,HOME_SYMBOL};
 use crate::utils::find_executable;
 
 pub(crate) enum Command {
@@ -30,8 +30,22 @@ impl Command {
 	// cd
 	else if input.starts_with("cd") {
 	    if let Some(target_dir_string) = input.strip_prefix("cd ") {
-		let target_dir_path = Path::new(target_dir_string);
-		Self::Cd(target_dir_path.to_path_buf())
+		if target_dir_string.starts_with(HOME_SYMBOL) {
+		    let mut target_dir_path = PathBuf::new();
+		    target_dir_path.push(env::home_dir().expect("User home directory is not set"));
+
+		    let home_strip_string = format!("{HOME_SYMBOL}/");
+		    if let Some(relative_path) = target_dir_string.strip_prefix(&home_strip_string) {
+			target_dir_path.push(relative_path);
+		    }
+		    
+		    Self::Cd(target_dir_path)
+		} else {
+		    let target_dir_path = Path::new(target_dir_string);
+		    Self::Cd(target_dir_path.to_path_buf())
+		}
+		
+
 	    } else if let Some(home) = env::home_dir() {
      		    Self::Cd(home)
      		} else {

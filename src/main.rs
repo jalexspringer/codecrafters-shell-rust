@@ -2,6 +2,7 @@ use std::io::{self, Write};
 // use std::env;
 
 const BUILTINS: [&str; 5] = ["exit", "echo", "type", "pwd", "cd"];
+static HOME_SYMBOL: char = '~';
 
 mod shell_command;
 mod utils;
